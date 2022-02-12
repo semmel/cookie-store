@@ -265,6 +265,20 @@ function sanitizeOptions<T>(arg: string | T): T {
   return arg;
 }
 
+interface CookieStore {
+  get(
+    options?: CookieStoreGetOptions['name'] | CookieStoreGetOptions
+  ): Promise<Cookie | undefined>;
+  onchange(event: CookieChangeEvent): void;
+  set(options: CookieInit | string, value?: string): Promise<void>;
+  getAll(
+    options?: CookieStoreGetOptions['name'] | CookieStoreGetOptions
+  ): Promise<Cookie[]>;
+  delete(
+    options: CookieStoreDeleteOptions['name'] | CookieStoreDeleteOptions
+  ): Promise<void>;
+}
+
 class CookieChangeEvent extends Event {
   changed: CookieList;
   deleted: CookieList;
@@ -279,18 +293,7 @@ class CookieChangeEvent extends Event {
   }
 }
 
-class CookieStore extends EventTarget {
-  onchange?: (event: CookieChangeEvent) => void;
-
-  get [Symbol.toStringTag]() {
-    return 'CookieStore';
-  }
-
-  constructor() {
-    super();
-    throw new TypeError('Illegal Constructor');
-  }
-
+const CookieStore: CookieStore = {
   /**
    * Get a cookie.
    *
@@ -317,7 +320,10 @@ class CookieStore extends EventTarget {
       return parse(document.cookie)[0];
     }
     return parse(document.cookie).find((cookie) => cookie.name === name);
-  }
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  onchange() {},
 
   async set(init: CookieInit | string, possibleValue?: string): Promise<void> {
     const item: CookieListItem = {
@@ -343,11 +349,10 @@ class CookieStore extends EventTarget {
 
     const cookieString = serialize(item.name, item.value, item);
     document.cookie = cookieString;
-    if (this.onchange)
-      this.onchange(
-        new CookieChangeEvent('change', { changed: [item], deleted: [] })
-      );
-  }
+    this.onchange(
+      new CookieChangeEvent('change', { changed: [item], deleted: [] })
+    );
+  },
 
   /**
    * Get multiple cookies.
@@ -360,7 +365,7 @@ class CookieStore extends EventTarget {
     }
     const cookie = await this.get(options);
     return cookie ? [cookie] : [];
-  }
+  },
 
   /**
    * Remove a cookie.
@@ -399,29 +404,26 @@ class CookieStore extends EventTarget {
       });
       document.cookie = serializedValue;
     }
-    if (this.onchange)
-      this.onchange(
-        new CookieChangeEvent('change', {
-          changed: [],
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          deleted: [{ ...results, value: undefined }],
-        })
-      );
+    this.onchange(
+      new CookieChangeEvent('change', {
+        changed: [],
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        deleted: [{ ...results, value: undefined }],
+      })
+    );
     return Promise.resolve();
-  }
-}
+  },
+};
 
 if (!window.cookieStore) {
-  window.CookieStore = CookieStore;
-  window.cookieStore = Object.create(CookieStore.prototype);
+  window.cookieStore = CookieStore;
   window.CookieChangeEvent = CookieChangeEvent;
 }
 
 declare global {
   interface Window {
-    CookieStore: typeof CookieStore;
-    cookieStore: CookieStore;
+    cookieStore: typeof CookieStore;
     CookieChangeEvent: typeof CookieChangeEvent;
   }
 }
