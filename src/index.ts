@@ -36,6 +36,7 @@ function tryDecode(
   }
 }
 
+type CookieSameSite = 'none' | 'lax' | 'strict';
 type CookieMatchType = 'equals';
 
 interface Cookie {
@@ -73,12 +74,6 @@ interface SerializeOptions {
   httpOnly?: boolean;
   secure?: boolean;
   sameSite?: boolean | string;
-}
-
-enum CookieSameSite {
-  strict = 'strict',
-  lax = 'lax',
-  none = 'none',
 }
 
 interface CookieInit {
@@ -330,7 +325,7 @@ class CookieStore extends EventTarget {
       value: '',
       path: '/',
       secure: false,
-      sameSite: CookieSameSite.strict,
+      sameSite: 'strict',
     };
     if (typeof init === 'string') {
       item.name = init as string;
